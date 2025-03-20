@@ -81,6 +81,9 @@ class molecule:
         self.twoDiffusion = False
 
 
+
+        self.confinements
+
     #Cytoskeleteon confinement
     def cytoskeleteonConfinement(self, numSquares,jumpProb):
         ''' 

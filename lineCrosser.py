@@ -57,13 +57,38 @@ def intersectionPoints(line1,line2):
     return px,py
 
 
+#Now given they intersect, are they both within boundaries
+def onLine(line,point):
+    #Determine if the point is on the parameterized line
+    x,y = point 
+    if 0< (x-line.x1)/(line.x2 - line.x1) <1:
+        return True 
+    else:
+        return False
 
-myline = line(-1,1,1,-1,0); myline2 = line(-1,-1,-4,-4)
+
+
+def crossingChecker(line1,line2):
+    #Find the intersection points
+    px,py = intersectionPoints(line1,line2)
+    #See if they're both on the line
+    if onLine(line1,(px,py)) and onLine(line2,(px,py)):
+        return True 
+    else:
+        return False
+    #If yes, crossing, if not no crossing
+
+
+
+
+
+myline = line(-1,1,1,-1,0); myline2 = line(-1,-1,4,4)
 func = myline.vectorize(); func2= myline2.vectorize()
 print(func(0.5))
+time1 = time.time()
 
-print(intersectionPoints(myline,myline2))
-
+(crossingChecker(myline,myline2))
+print(time.time()-time1)
 
 #Now we determine if the distance functional can be properly minimized
 
