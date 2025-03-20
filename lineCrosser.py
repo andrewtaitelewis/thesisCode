@@ -14,14 +14,6 @@ class line:
         self.p = p                  #Probability for a molecule to jump over the line
         pass
 
-
-
-    def vectorize(self):
-        '''
-        Makes a vector form of our confinement line where 0<s<1
-        '''
-        return lambda s: np.asarray([(self.x2-self.x1)*s +self.x1, (self.y2-self.y1)*s + self.y1])
-
     def returnPoints(self):
         '''Returns the points which define the line'''
         return self.x1,self.y1,self.x2,self.y2
