@@ -17,11 +17,7 @@ class line:
     def returnPoints(self):
         '''Returns the points which define the line'''
         return self.x1,self.y1,self.x2,self.y2
-def distance(line1,line2,s,t):
-    '''
-    returns the distance between two lines
-    '''
-    return np.sum((line1(s) - line2(t))**2)
+
 def intersectionChecker(line1,line2):
     '''Given two lines.... do they intersect'''
     toMinimize = lambda s: distance(line1,line2,s[0],s[1])  #Define our minimization function

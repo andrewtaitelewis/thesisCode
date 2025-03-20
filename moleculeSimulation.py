@@ -8,6 +8,7 @@ import scipy
 import os 
 import PIL 
 import gillespie
+
 #The class that contains our cell simulation
 
 np.random.seed(1)
@@ -84,6 +85,9 @@ class molecule:
 
         self.confinements
 
+
+
+    #Sub Class for the confinements
     #Cytoskeleteon confinement
     def cytoskeleteonConfinement(self, numSquares,jumpProb):
         ''' 
