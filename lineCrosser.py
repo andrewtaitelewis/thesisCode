@@ -1,6 +1,5 @@
 import numpy as np 
 import scipy
-import scipy.optimize 
 
 #Trying to do a 
 
