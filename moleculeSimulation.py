@@ -97,7 +97,13 @@ class molecule:
             self.x2 = x2; self.y2 = y2  #Coordinates of the second end point of the line
             self.p = p                  #Probability for a molecule to jump over the line
             pass
-
+        
+        def makeLine(array):
+            '''
+                Makes a line object
+            '''
+            newLine = line(*array)
+            return newLine
         def returnPoints(self):
             '''Returns the points which define the line'''
             return self.x1,self.y1,self.x2,self.y2
@@ -109,9 +115,14 @@ class molecule:
 
 
 #Cytoskeleteon confinement
-    def confinementInitializer(self):
-        pass
-
+    def confinementInitializer(self, array):
+        '''
+        sets up the confinement given an array of confinements
+        Array = [N,5] (x1,y1,x2,y2,p)
+        '''
+        for i in array:
+            self.confinements.append(line.makeLine(*i))
+        return
 
     def cytoskeleteonConfinement(self, numSquares,jumpProb):
         ''' 
