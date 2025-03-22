@@ -108,6 +108,345 @@ class molecule:
 #Now given they intersect, are they both within boundaries
 
 
+#Cytoskeleteon confinement
+    def confinementInitializer(self):
+        pass
+
+
+    def cytoskeleteonConfinement(self, numSquares,jumpProb):
+        ''' 
+        cytoskeletalConfinement: creates a meshwork skeleton for the particles to diffuse within
+        ------------------------
+        numSquares, int: number of squares across the ROI, i.e. 3 squares would mean 9 total
+        jumpProb, float, 0 < 1: the probability that if a walker tries to jump across the cytoskeleton
+        it will succeed
+        '''
+        #Update our internal variables
+        self.jumpProb = jumpProb
+        self.skeleton = True
+        #Now time to make the skeleton
+        #Stretches for 2x roi in each direction
+        lineLocations = np.linspace(0-2*self.ROI,self.ROI+2*self.ROI,numSquares*5+1)
+
+        self.xSkeleton = lineLocations
+        self.ySkeleton = lineLocations.copy()
+
+        return
+
+
+    #LipidDomain Confinement
+    def lipidDomainConfinement(self, radius,location,jumpProbability = 0.1):
+        ''' 
+        Creates circular lipid domains for confinement with their own diffusion coefficients
+        Params:
+        -------
+        radius, float: size of microdomain in um
+        location, (float,float): where the microdomain is, in um
+        jumpProbabilities, float, 0,1: the probability that a particle will jump over a membrane
+        '''
+        self.lipidRaftCenters.append(location)
+        self.lipidRaftRadius.append(radius)
+        self.lipidRaft = True 
+        self.lipidRaftJumpProb.append(jumpProbability)
+        return
+
+    #Export our 'image'
+    def imageExport(self):
+        ''' 
+        Export an image of the molecules, \n
+        seed all of the molecules onto a 2048x2048 grid and then bin them down to the image resolution
+        Params:
+        -------
+        Returns:
+        --------
+        '''
+        #Helper function 
+        def rebin(arr, new_shape):
+            shape = (new_shape[0], arr.shape[0] // new_shape[0],
+                    new_shape[1], arr.shape[1] // new_shape[1])
+            return arr.reshape(shape).mean(-1).mean(1)
+
+        #Bringing some stuff from the class instance
+        imageResolution = self.imageResolution
+        subImageRes = imageResolution*4
+        #Load the gaussian kernel 
+        #========================
+        x = np.arange(subImageRes)
+        xx,yy = np.meshgrid(x,x)
+        kernel = helper.gaussian(1,xx, yy, self.beamRadius,subImageRes/self.ROI)      #Gaussian Beam
+
+
+        
+        
+        image = np.zeros((subImageRes,subImageRes))       #our pixels
+
+        
+        
+        
+        #Change it so that it just resolves 9t 
+        #now we gotta place our molecule in the x,y field 
+        xIntegerPositions = (np.round(self.xPositions*(float(subImageRes/self.ROI))))
+        yIntegerPositions = (np.round(self.yPositions*(float(subImageRes/self.ROI))))
+        
+        for i,j,k in zip(xIntegerPositions,yIntegerPositions,self.onMolecules):
+            #Make sure our molecule is actually in our image
+            if i < 0 or i > subImageRes-1 or j < 0 or j > subImageRes - 1:
+                continue 
+            #If blinking and it is off, we will continue
+            if self.blinking and k == 0:
+                continue
+
+
+
+            image[int(i)][int(j)] = 1      #i.e. we have a molecule there
+
+        
+
+        
+        #Now we want to convolve it with a gaussian
+        imageFT = np.fft.rfft2(image)
+        gaussianFT= np.fft.rfft2(kernel)
+
+        returnedImage = np.fft.irfft2(imageFT*gaussianFT) 
+        #Now we will want to bin it to our image resolution
+        returnedImage = rebin(returnedImage,(self.imageResolution,self.imageResolution))
+        
+        
+        
+        return returnedImage
+
+    def gSim(self,rateOn,rateOff,maxTime):
+            ''' 
+            Initializes our gillespie simulation and lets it burn into steady state
+            Params:
+            Self: the simulation object
+            rateOn, float: the rate that molecules go OFF -> ON
+            rateOff, flaot: the rate that molecule go ON -> OFF
+            Returns:
+            Null
+            '''
+            self.blinking = True        #Indicate that we have blinking in our system
+            #Initialize our variable
+            self.rateOn = rateOn 
+            self.rateOff = rateOff
+
+            #We will use the gillespie package
+            if self.numMolec%2 != 0:        #If our number of molecules is odd (for whatever reason)
+                initial = [int(self.numMolec+1)/2,int(self.numMolec+1)/2 - 1]
+            else:
+                initial = [int(self.numMolec+1)/2,int(self.numMolec+1)/2 - 1]
+
+            #[Number On Molecules, Number Off Molecules]
+
+            #Our propensities and update
+            propen = [lambda s,r: s*rateOff, lambda s,r: r*rateOn]
+            rates = [[-1,1],[1,-1]]
+
+            #Now let it burn in
+            times,measurements = gillespie.simulate(initial,propen,rates,duration = 100)
+            #=== Post burn in we can now run it at steady state ===# 
+            init = measurements[-1]
+            times,measurements= gillespie.simulate(init,propen,rates,duration = maxTime)
+
+            return measurements,times
+    #Diffuse our molecules
+    def diffuse(self,timeStepSize):
+        ''' 
+        diffuses the cells based on a random diffusion process based on fick diffusion
+        Params:
+        -------
+        timeStepSize: how large of a time step is taken (s)
+        ''' 
+            
+        def positionGenerator(diffusionCoefficient,timeStepSize,numSamples):
+            '''
+            Diffusing
+            '''
+            d = diffusionCoefficient
+            t = timeStepSize
+            return 2*np.sqrt(d*t)*scipy.special.erfinv(2*(np.random.uniform(size = numSamples)-0.5))
+        
+        
+        #Generating our x jumps
+        xOffset = (positionGenerator(self.diffusionCoefficient, timeStepSize, self.numMolec))
+        if self.xVelocity != 0:
+            jump = self.xVelocity*timeStepSize
+            xOffset += jump
+        
+        
+        xOffset = np.asarray(xOffset)
+        yOffset = (positionGenerator(self.diffusionCoefficient, timeStepSize, self.numMolec))
+        yOffset = np.asarray(yOffset)
+
+        
+
+        if self.twoDiffusion == True:
+            xOffset2 = positionGenerator(self.secondDiffusion, timeStepSize, self.numMolec)
+            xOffset2 = np.asarray(xOffset2)
+            yOffset2 = (positionGenerator(self.secondDiffusion, timeStepSize, self.numMolec))
+            yOffset2 = np.asarray(yOffset2)
+
+            #Now apply it to our original xOffset
+            lower = self.xbound - 0.5 
+            upper = self.xbound + 0.5 
+
+            for i in range(len(self.xPositions)):
+                curPos = self.xPositions[i]
+                if curPos < lower:
+                    continue
+                if curPos > upper:
+                    xOffset[i] = xOffset2[i]
+                if curPos > lower and curPos < upper:
+                    fracAcross = (curPos - lower)/(upper - lower)   #how far across the boundary is it
+                    DinBetween = self.diffusionCoefficient*(1-fracAcross) + self.secondDiffusion*(fracAcross)
+                    #Generate a step 
+                    step = positionGenerator(DinBetween,timeStepSize,1)
+                    xOffset[i] = step 
+            
+        #Now time to see if we need to check
+        xAccept = np.ones((self.numMolec))       #Intiially start by accepting all
+        yAccept = xAccept.copy()
+
+        #If we have cytoskeletal confinements
+        if self.skeleton == True:
+            #Go through particles- see if any jump over a line
+            #If they do jump over a line- see if they can (probability)
+            #if True- jump, if False- we'll need to reflect it
+            #Check the x 
+            xAccepted,xFinalPositions = skeletonJumper(self.xPositions,xOffset,self.xSkeleton,self.jumpProb)
+            yAccepted,yFinalPositions = skeletonJumper(self.yPositions,yOffset,self.ySkeleton,self.jumpProb)
+            xAccept= xAccept*xAccepted
+            yAccept = yAccept*yAccepted
+
+
+
+
+        #If we have lipid rafts
+        #For each pair of positions we see if it has entered any lipid domain
+        if self.lipidRaft == True:
+            for i in range(self.numMolec):
+                xPos,yPos = self.xPositions[i],self.yPositions[i]
+                xPro,yPro = xPos + xOffset[i], yPos + yOffset[i]
+                #Over all our rafts
+                for j in range(len(self.lipidRaftCenters)):
+                    Accepted = lipidDomainCrosser(self.lipidRaftCenters[j], self.lipidRaftRadius[j], 
+                    (xPos,yPos), (xPro,yPro), self.lipidRaftJumpProb[j])
+                    xAccept[i] = xAccept[i]*Accepted
+                    yAccept[i] = yAccept[i]*Accepted
+
+        if self.skeleton == True:
+                
+                self.xPositions = xFinalPositions
+                self.yPositions = yFinalPositions
+
+        if self.skeleton == False:
+            self.xPositions = self.xPositions+xOffset
+            self.yPositions = self.yPositions+yOffset
+        if self.periodic == True:
+            
+            
+            
+            self.xPositions = self.xPositions%self.ROI
+            self.yPositions = self.yPositions%self.ROI
+            return
+        else:       #not periodic
+            print('wtf')
+            self.xPositions += (xOffset*xAccept)
+            self.yPositions += (yOffset*yAccept)
+            if self.skeleton == True:
+                
+                self.xPositions += int(xAccept == 0)*(xWorstCasePos-self.xPositions)
+                self.xPositions += int(yAccept == 0)*(yWorstCasePos-self.yPositions)
+        return 
+    #Return a bunch of diffusion
+    def simulate(self,timeSteps,timeStepSize):
+        '''
+        Simulates our cells
+        '''
+        
+        #Reset our position history
+        self.xPosHist = []
+        self.yPosHist = []
+        returnedArray = []
+        
+        #Make our molecules blink
+        if self.blinking == True:
+            measure, times = self.gSim(self.rateOn,self.rateOff,timeSteps*timeStepSize)
+
+
+            #Now we want to randomly choose molecules to turn on and off
+            
+            gillIndex = 0
+        for i in range(timeSteps):
+            if self.blinking == True:
+                #Gillespie time
+                curTime = i*timeStepSize
+
+                while times[gillIndex] < curTime:
+                    gillIndex += 1
+                gillIndex -= 1
+                if curTime == 0:
+                    gillIndex = 0
+
+            #Now that we have the proper index we need to look at 
+
+                #If we have too many
+                while measure[gillIndex][0] < sum(self.onMolecules):
+                    randomIndex = np.random.randint(self.numMolec)
+                    if self.onMolecules[randomIndex] == 1:
+                        self.onMolecules[randomIndex] = 0
+            
+
+                #If we have too few
+                while measure[gillIndex][0] > sum(self.onMolecules):
+                    randomIndex = np.random.randint(self.numMolec)
+                    if self.onMolecules[randomIndex] == 0:
+                        self.onMolecules[randomIndex] = 1
+            
+            
+        
+            returnedArray.append(self.imageExport())
+            self.xPosHist.append(self.xPositions.copy())
+            self.yPosHist.append(self.yPositions.copy())
+            self.diffuse(timeStepSize)
+            self.floureHist.append(sum(self.onMolecules))        #FOR DIAGNOSTICS
+            
+        
+        means = []
+        for i in returnedArray:
+            means.append(np.max(i))
+        std = np.mean(means)/self.S2N
+        newArray = []
+        for image in returnedArray:
+            if self.S2N !=0:
+                noise = np.random.normal(loc = 0.0, scale = std,size = (np.shape(image)[0],np.shape(image)[0]))
+
+            #If we have noise  
+            else:
+                noise = np.zeros((np.shape(image)[0],np.shape(image)[0]))
+            image = (image+noise)
+            if np.min(image) < 0:
+                image = image + abs(np.min(image))
+            newArray.append(image)
+            #Remove all the <0
+
+
+
+        return newArray
+
+    #Defining a region with a different diffusion coefficient
+    def diffusionRegion(self,xbound,newDiffusion):
+        '''For our diffusion map 
+        xBound = our barrier, if a molecule is in the region greater than that it'll diffuse with the second diffusion coefficient
+            '''
+        self.secondDiffusion = newDiffusion
+        self.xbound = xbound 
+        self.twoDiffusion = True 
+
+    #Defining our Gillespie Simulation
+
+
+
 def crossingChecker(line1,line2):
     #Find the intersection points
 
@@ -139,351 +478,8 @@ def crossingChecker(line1,line2):
     else:
         return False
 
-#Cytoskeleteon confinement
-def cytoskeleteonConfinement(self, numSquares,jumpProb):
-    ''' 
-    cytoskeletalConfinement: creates a meshwork skeleton for the particles to diffuse within
-    ------------------------
-    numSquares, int: number of squares across the ROI, i.e. 3 squares would mean 9 total
-    jumpProb, float, 0 < 1: the probability that if a walker tries to jump across the cytoskeleton
-    it will succeed
-    '''
-    #Update our internal variables
-    self.jumpProb = jumpProb
-    self.skeleton = True
-    #Now time to make the skeleton
-    #Stretches for 2x roi in each direction
-    lineLocations = np.linspace(0-2*self.ROI,self.ROI+2*self.ROI,numSquares*5+1)
 
-    self.xSkeleton = lineLocations
-    self.ySkeleton = lineLocations.copy()
-
-    return
-
-
-#LipidDomain Confinement
-def lipidDomainConfinement(self, radius,location,jumpProbability = 0.1):
-    ''' 
-    Creates circular lipid domains for confinement with their own diffusion coefficients
-    Params:
-    -------
-    radius, float: size of microdomain in um
-    location, (float,float): where the microdomain is, in um
-    jumpProbabilities, float, 0,1: the probability that a particle will jump over a membrane
-    '''
-    self.lipidRaftCenters.append(location)
-    self.lipidRaftRadius.append(radius)
-    self.lipidRaft = True 
-    self.lipidRaftJumpProb.append(jumpProbability)
-    return
-
-#Export our 'image'
-def imageExport(self):
-    ''' 
-    Export an image of the molecules, \n
-    seed all of the molecules onto a 2048x2048 grid and then bin them down to the image resolution
-    Params:
-    -------
-    Returns:
-    --------
-    '''
-    #Helper function 
-    def rebin(arr, new_shape):
-        shape = (new_shape[0], arr.shape[0] // new_shape[0],
-                new_shape[1], arr.shape[1] // new_shape[1])
-        return arr.reshape(shape).mean(-1).mean(1)
-
-    #Bringing some stuff from the class instance
-    imageResolution = self.imageResolution
-    subImageRes = imageResolution*4
-    #Load the gaussian kernel 
-    #========================
-    x = np.arange(subImageRes)
-    xx,yy = np.meshgrid(x,x)
-    kernel = helper.gaussian(1,xx, yy, self.beamRadius,subImageRes/self.ROI)      #Gaussian Beam
-
-
-    
-    
-    image = np.zeros((subImageRes,subImageRes))       #our pixels
-
-    
-    
-    
-    #Change it so that it just resolves 9t 
-    #now we gotta place our molecule in the x,y field 
-    xIntegerPositions = (np.round(self.xPositions*(float(subImageRes/self.ROI))))
-    yIntegerPositions = (np.round(self.yPositions*(float(subImageRes/self.ROI))))
-    
-    for i,j,k in zip(xIntegerPositions,yIntegerPositions,self.onMolecules):
-        #Make sure our molecule is actually in our image
-        if i < 0 or i > subImageRes-1 or j < 0 or j > subImageRes - 1:
-            continue 
-        #If blinking and it is off, we will continue
-        if self.blinking and k == 0:
-            continue
-
-
-
-        image[int(i)][int(j)] = 1      #i.e. we have a molecule there
-
-    
-
-    
-    #Now we want to convolve it with a gaussian
-    imageFT = np.fft.rfft2(image)
-    gaussianFT= np.fft.rfft2(kernel)
-
-    returnedImage = np.fft.irfft2(imageFT*gaussianFT) 
-    #Now we will want to bin it to our image resolution
-    returnedImage = rebin(returnedImage,(self.imageResolution,self.imageResolution))
-    
-    
-    
-    return returnedImage
-
-def gSim(self,rateOn,rateOff,maxTime):
-        ''' 
-        Initializes our gillespie simulation and lets it burn into steady state
-        Params:
-        Self: the simulation object
-        rateOn, float: the rate that molecules go OFF -> ON
-        rateOff, flaot: the rate that molecule go ON -> OFF
-        Returns:
-        Null
-        '''
-        self.blinking = True        #Indicate that we have blinking in our system
-        #Initialize our variable
-        self.rateOn = rateOn 
-        self.rateOff = rateOff
-
-        #We will use the gillespie package
-        if self.numMolec%2 != 0:        #If our number of molecules is odd (for whatever reason)
-            initial = [int(self.numMolec+1)/2,int(self.numMolec+1)/2 - 1]
-        else:
-            initial = [int(self.numMolec+1)/2,int(self.numMolec+1)/2 - 1]
-
-        #[Number On Molecules, Number Off Molecules]
-
-        #Our propensities and update
-        propen = [lambda s,r: s*rateOff, lambda s,r: r*rateOn]
-        rates = [[-1,1],[1,-1]]
-
-        #Now let it burn in
-        times,measurements = gillespie.simulate(initial,propen,rates,duration = 100)
-        #=== Post burn in we can now run it at steady state ===# 
-        init = measurements[-1]
-        times,measurements= gillespie.simulate(init,propen,rates,duration = maxTime)
-
-        return measurements,times
-#Diffuse our molecules
-def diffuse(self,timeStepSize):
-    ''' 
-    diffuses the cells based on a random diffusion process based on fick diffusion
-    Params:
-    -------
-    timeStepSize: how large of a time step is taken (s)
-    ''' 
-        
-    def positionGenerator(diffusionCoefficient,timeStepSize,numSamples):
-        '''
-        Diffusing
-        '''
-        d = diffusionCoefficient
-        t = timeStepSize
-        return 2*np.sqrt(d*t)*scipy.special.erfinv(2*(np.random.uniform(size = numSamples)-0.5))
-    
-    
-    #Generating our x jumps
-    xOffset = (positionGenerator(self.diffusionCoefficient, timeStepSize, self.numMolec))
-    if self.xVelocity != 0:
-        jump = self.xVelocity*timeStepSize
-        xOffset += jump
-    
-    
-    xOffset = np.asarray(xOffset)
-    yOffset = (positionGenerator(self.diffusionCoefficient, timeStepSize, self.numMolec))
-    yOffset = np.asarray(yOffset)
-
-    
-
-    if self.twoDiffusion == True:
-        xOffset2 = positionGenerator(self.secondDiffusion, timeStepSize, self.numMolec)
-        xOffset2 = np.asarray(xOffset2)
-        yOffset2 = (positionGenerator(self.secondDiffusion, timeStepSize, self.numMolec))
-        yOffset2 = np.asarray(yOffset2)
-
-        #Now apply it to our original xOffset
-        lower = self.xbound - 0.5 
-        upper = self.xbound + 0.5 
-
-        for i in range(len(self.xPositions)):
-            curPos = self.xPositions[i]
-            if curPos < lower:
-                continue
-            if curPos > upper:
-                xOffset[i] = xOffset2[i]
-            if curPos > lower and curPos < upper:
-                fracAcross = (curPos - lower)/(upper - lower)   #how far across the boundary is it
-                DinBetween = self.diffusionCoefficient*(1-fracAcross) + self.secondDiffusion*(fracAcross)
-                #Generate a step 
-                step = positionGenerator(DinBetween,timeStepSize,1)
-                xOffset[i] = step 
-        
-    #Now time to see if we need to check
-    xAccept = np.ones((self.numMolec))       #Intiially start by accepting all
-    yAccept = xAccept.copy()
-
-    #If we have cytoskeletal confinements
-    if self.skeleton == True:
-        #Go through particles- see if any jump over a line
-        #If they do jump over a line- see if they can (probability)
-        #if True- jump, if False- we'll need to reflect it
-        #Check the x 
-        xAccepted,xFinalPositions = skeletonJumper(self.xPositions,xOffset,self.xSkeleton,self.jumpProb)
-        yAccepted,yFinalPositions = skeletonJumper(self.yPositions,yOffset,self.ySkeleton,self.jumpProb)
-        xAccept= xAccept*xAccepted
-        yAccept = yAccept*yAccepted
-
-
-
-
-    #If we have lipid rafts
-    #For each pair of positions we see if it has entered any lipid domain
-    if self.lipidRaft == True:
-        for i in range(self.numMolec):
-            xPos,yPos = self.xPositions[i],self.yPositions[i]
-            xPro,yPro = xPos + xOffset[i], yPos + yOffset[i]
-            #Over all our rafts
-            for j in range(len(self.lipidRaftCenters)):
-                Accepted = lipidDomainCrosser(self.lipidRaftCenters[j], self.lipidRaftRadius[j], 
-                (xPos,yPos), (xPro,yPro), self.lipidRaftJumpProb[j])
-                xAccept[i] = xAccept[i]*Accepted
-                yAccept[i] = yAccept[i]*Accepted
-
-    if self.skeleton == True:
-            
-            self.xPositions = xFinalPositions
-            self.yPositions = yFinalPositions
-
-    if self.skeleton == False:
-        self.xPositions = self.xPositions+xOffset
-        self.yPositions = self.yPositions+yOffset
-    if self.periodic == True:
-        
-        
-        
-        self.xPositions = self.xPositions%self.ROI
-        self.yPositions = self.yPositions%self.ROI
-        return
-    else:       #not periodic
-        print('wtf')
-        self.xPositions += (xOffset*xAccept)
-        self.yPositions += (yOffset*yAccept)
-        if self.skeleton == True:
-            
-            self.xPositions += int(xAccept == 0)*(xWorstCasePos-self.xPositions)
-            self.xPositions += int(yAccept == 0)*(yWorstCasePos-self.yPositions)
-    return 
-
-
-
-
-
-#Return a bunch of diffusion
-def simulate(self,timeSteps,timeStepSize):
-    '''
-    Simulates our cells
-    '''
-    
-    #Reset our position history
-    self.xPosHist = []
-    self.yPosHist = []
-    returnedArray = []
-    
-    #Make our molecules blink
-    if self.blinking == True:
-        measure, times = self.gSim(self.rateOn,self.rateOff,timeSteps*timeStepSize)
-
-
-        #Now we want to randomly choose molecules to turn on and off
-        
-        gillIndex = 0
-    for i in range(timeSteps):
-        if self.blinking == True:
-            #Gillespie time
-            curTime = i*timeStepSize
-
-            while times[gillIndex] < curTime:
-                gillIndex += 1
-            gillIndex -= 1
-            if curTime == 0:
-                gillIndex = 0
-
-        #Now that we have the proper index we need to look at 
-
-            #If we have too many
-            while measure[gillIndex][0] < sum(self.onMolecules):
-                randomIndex = np.random.randint(self.numMolec)
-                if self.onMolecules[randomIndex] == 1:
-                    self.onMolecules[randomIndex] = 0
-        
-
-            #If we have too few
-            while measure[gillIndex][0] > sum(self.onMolecules):
-                randomIndex = np.random.randint(self.numMolec)
-                if self.onMolecules[randomIndex] == 0:
-                    self.onMolecules[randomIndex] = 1
-        
-        
-    
-        returnedArray.append(self.imageExport())
-        self.xPosHist.append(self.xPositions.copy())
-        self.yPosHist.append(self.yPositions.copy())
-        self.diffuse(timeStepSize)
-        self.floureHist.append(sum(self.onMolecules))        #FOR DIAGNOSTICS
-        
-    
-    means = []
-    for i in returnedArray:
-        means.append(np.max(i))
-    std = np.mean(means)/self.S2N
-    newArray = []
-    for image in returnedArray:
-        if self.S2N !=0:
-            noise = np.random.normal(loc = 0.0, scale = std,size = (np.shape(image)[0],np.shape(image)[0]))
-
-        #If we have noise  
-        else:
-            noise = np.zeros((np.shape(image)[0],np.shape(image)[0]))
-        image = (image+noise)
-        if np.min(image) < 0:
-            image = image + abs(np.min(image))
-        newArray.append(image)
-        #Remove all the <0
-
-
-
-    return newArray
-
-#Defining a region with a different diffusion coefficient
-def diffusionRegion(self,xbound,newDiffusion):
-    '''For our diffusion map 
-    xBound = our barrier, if a molecule is in the region greater than that it'll diffuse with the second diffusion coefficient
-        '''
-    self.secondDiffusion = newDiffusion
-    self.xbound = xbound 
-    self.twoDiffusion = True 
-
-#Defining our Gillespie Simulation
-
-
-
-
-#Helper functions
-
-
-
+#===== Helper functions =====
 
 
 def cytoskeletonCrosser(skeleton,curPos,proPos,jumpProb):
@@ -534,8 +530,6 @@ def cytoskeletonCrosser(skeleton,curPos,proPos,jumpProb):
     else:   
         #doesn't hit anything and jumps
         return False, proPos
-
-
 
 def skeletonJumper(positions,offset,skeleton,jumpProb):
     '''
