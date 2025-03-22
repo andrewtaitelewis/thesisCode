@@ -12,6 +12,28 @@ import gillespie
 #The class that contains our cell simulation
 
 np.random.seed(1)
+class line:
+    def __init__(self,x1,y1,x2,y2,p = 0):
+        '''
+        Defines our line
+        '''
+        self.x1 = x1; self.y1 = y1  #Coordinates of one end point of the line
+        self.x2 = x2; self.y2 = y2  #Coordinates of the second end point of the line
+        self.p = p                  #Probability for a molecule to jump over the line
+        pass
+    
+    
+    def returnPoints(self):
+        '''Returns the points which define the line'''
+        return self.x1,self.y1,self.x2,self.y2
+
+
+def makeLine(array):
+    '''
+        Makes a line object
+    '''
+    newLine = line(*array)
+    return newLine
 
 class molecule:
     '''
@@ -88,28 +110,6 @@ class molecule:
 
 
     #Sub Class for the confinements
-    class line:
-        def __init__(self,x1,y1,x2,y2,p = 0):
-            '''
-            Defines our line
-            '''
-            self.x1 = x1; self.y1 = y1  #Coordinates of one end point of the line
-            self.x2 = x2; self.y2 = y2  #Coordinates of the second end point of the line
-            self.p = p                  #Probability for a molecule to jump over the line
-            pass
-        
-        def makeLine(array):
-            '''
-                Makes a line object
-            '''
-            newLine = line(*array)
-            return newLine
-        def returnPoints(self):
-            '''Returns the points which define the line'''
-            return self.x1,self.y1,self.x2,self.y2
-    
-    
-
 
 #Now given they intersect, are they both within boundaries
 
@@ -121,7 +121,7 @@ class molecule:
         Array = [N,5] (x1,y1,x2,y2,p)
         '''
         for i in array:
-            self.confinements.append(line.makeLine(*i))
+            self.confinements.append(makeLine(i))
         return
 
     def cytoskeleteonConfinement(self, numSquares,jumpProb):
@@ -618,12 +618,12 @@ def lipidDomainCrosser(location, radii,currentPosition,proposedPosition,probabil
 
 #our testing code 
 if __name__ == '__main__' : 
-    #Cytoskeleton crosser test
-    cytoarray = np.array([1,2,3,4,5])
-    prePos = 2.5
-    postPos = 2.8 
-    print(cytoskeletonCrosser(cytoarray,prePos,postPos))
+    #New confinements
 
+    moleculeSimulation = molecule()
+    moleculeSimulation.confinementInitializer([[1,1,2,2,0]])
+    
+    print(moleculeSimulation.confinements)
 
 
 

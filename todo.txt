@@ -1,0 +1,9 @@
+- Set up intinitalizer 
+for confinements
+    DONE Storage for line objects
+    - Reading a file(Csv?)
+    with the data
+    -
+
+- Implement line crosser
+into simulation code 
