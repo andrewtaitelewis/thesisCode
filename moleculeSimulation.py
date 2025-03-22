@@ -83,7 +83,7 @@ class molecule:
 
 
 
-        self.confinements
+        self.confinements = []
 
 
 
@@ -447,6 +447,10 @@ class molecule:
 
 
 
+
+
+#===== Helper functions =====
+
 def crossingChecker(line1,line2):
     #Find the intersection points
 
@@ -477,10 +481,6 @@ def crossingChecker(line1,line2):
         return True 
     else:
         return False
-
-
-#===== Helper functions =====
-
 
 def cytoskeletonCrosser(skeleton,curPos,proPos,jumpProb):
     ''' 
