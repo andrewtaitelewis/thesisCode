@@ -472,12 +472,13 @@ def crossingChecker(skeleton,proposedJump):
         return px,py
 
     px,py = intersectionPoints(skeleton,proposedJump)
-    #BOTH on line AND successful jump
-    if onLine(skeleton,(px,py)) and onLine(proposedJump,(px,py)) and (np.rand.random() < skeleton.p):
-        return True 
-    return False
+    #Both on Line and we fail to jump
+    if onLine(skeleton,(px,py)) and onLine(proposedJump,(px,py)) and (np.rand.random() > skeleton.p):
+        return False 
+    return True
 
 vfunc = np.vectorize(crossingChecker)       #Vectorize our crossing Checker so we can pass the array
+
 def skeletonJumper(positions,offset,completeSkeleton):
     '''
     We now check if our molecules have crossed ANY of the lines
@@ -485,19 +486,22 @@ def skeletonJumper(positions,offset,completeSkeleton):
         positions Nx2: x1,y1, N molecules: The original positions of our molecules 
         offset Nx2:x2,y2    The proposed jump of our molecules
         completeSkeleton:   All of the line objects
+    Returns:
+        positions, updated with the new 
     '''
-    acceptArray = np.ones(len(positions))
-    newPositions = np.zeros(len(positions))
-    #Check the x 
-    proposed = positions+offset
 
-    jumpLines = np.concatenate(positions,acceptArray)       #Creates a Nx4 array, x1,y1,x2,y2
+    proposed = positions+offset                             #Where the molecules moy go
+
+    jumpLines = np.concatenate(positions,proposed)          #Creates a Nx4 array, x1,y1,x2,y2
 
     moleculeJumps = [makeLine(i) for i in jumpLines]        #Our molecules jumps
     #Now we see what we accepts
-    
-    
-    
+    lambdavFunc = lambda x: vfunc(completeSkeleton,x)       #Our lambda function
+    acceptedArray = lambdavFunc(moleculeJumps)              #(Hopefully) returns an array of true false
+    #Take accepted jumps, set new positions
+
+    positions[acceptedArray == True ] = proposed            #Where we can go, we go
+    return positions                                        #Returns the new jump
     
 #our testing code 
 if __name__ == '__main__' : 
