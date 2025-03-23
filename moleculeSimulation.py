@@ -107,13 +107,6 @@ class molecule:
 
         self.confinements = []
 
-
-
-    #Sub Class for the confinements
-
-#Now given they intersect, are they both within boundaries
-
-
 #Cytoskeleteon confinement
     def confinementInitializer(self, array):
         '''
@@ -123,7 +116,7 @@ class molecule:
         for i in array:
             self.confinements.append(makeLine(i))
 
-        self.skeleton = True
+        self.skeleton = True        #Makes the simulator aware that we have confinements
         return
 
     def cytoskeleteonConfinement(self, numSquares,jumpProb):
@@ -145,7 +138,6 @@ class molecule:
         self.ySkeleton = lineLocations.copy()
 
         return
-
 
     #LipidDomain Confinement
     def lipidDomainConfinement(self, radius,location,jumpProbability = 0.1):
@@ -262,6 +254,7 @@ class molecule:
             times,measurements= gillespie.simulate(init,propen,rates,duration = maxTime)
 
             return measurements,times
+   
     #Diffuse our molecules
     def diffuse(self,timeStepSize):
         ''' 
@@ -320,7 +313,7 @@ class molecule:
         xAccept = np.ones((self.numMolec))       #Intiially start by accepting all
         yAccept = xAccept.copy()
 
-        #If we have cytoskeletal confinements
+        #CYTOSKELETON CONFINEMENTS
         if self.skeleton == True:
             #Go through particles- see if any jump over a line
             #If they do jump over a line- see if they can (probability)
@@ -334,19 +327,7 @@ class molecule:
 
 
 
-        #If we have lipid rafts
-        #For each pair of positions we see if it has entered any lipid domain
-        if self.lipidRaft == True:
-            for i in range(self.numMolec):
-                xPos,yPos = self.xPositions[i],self.yPositions[i]
-                xPro,yPro = xPos + xOffset[i], yPos + yOffset[i]
-                #Over all our rafts
-                for j in range(len(self.lipidRaftCenters)):
-                    Accepted = lipidDomainCrosser(self.lipidRaftCenters[j], self.lipidRaftRadius[j], 
-                    (xPos,yPos), (xPro,yPro), self.lipidRaftJumpProb[j])
-                    xAccept[i] = xAccept[i]*Accepted
-                    yAccept[i] = yAccept[i]*Accepted
-
+        #CONFINEMENTS
         if self.skeleton == True:
                 
                 self.xPositions = xFinalPositions
@@ -496,89 +477,23 @@ def crossingChecker(line1,line2):
         return False
 
 def cytoskeletonCrosser(skeleton,curPos,proPos,jumpProb):
-    ''' 
-    Given, currentPosition, proposedPosition and the skeleton check whether the walker crosses the skeleton \n
-    Params:\n-------------
-    skeleton, [floats]: the array of skeleton positions
-    curPos, float: The current coordinate (in 1d) of the molecule
-    proPos, float: The propoesed position to jump to of the molecule
-    jumpProb, float: between 1 and 0, probability strength of confinement
-    Returns: \n-------------
-    Boolean of whether the molecule has crossed a skeleton or not
-    Float: final position, whether it was jumped or not
+    pass
+
+def skeletonJumper(positions,offset,skeleton):
     '''
-    #Formatting- Make sure everything is in the spot we want 
-    skeleton = np.array(skeleton)
-
-    test1 = skeleton - curPos 
-    test2 = skeleton - proPos   #If when we multiply these together we get a negative value we will have crossed
-    
-    if any(x < 0 for x in np.multiply(test1,test2)):
-        array = list(np.multiply(test1,test2) < 0)
-        index = 0 
-        testArray = skeleton -curPos 
-        while testArray[index] < 0:
-            index += 1
-        index = index - 1
-        if proPos > curPos:
-            index +=1
-        
-         
-        skeletonPosition = skeleton[index]  #The position in um 
-        
-
-        #reflect it off the boundary   
-        #Now time to see if it'll jump 
- 
-        if np.random.random() < jumpProb:
-            #If it jumps
-            return True, proPos
-        gridSize = (skeleton[index]-skeleton[index-1])
-        if skeletonPosition < curPos:
-            endPos = skeletonPosition + abs(proPos-curPos)%gridSize
-
-        elif skeletonPosition > curPos:
-            endPos = skeletonPosition - abs(proPos-curPos)%gridSize
-        return False,endPos
-    else:   
-        #doesn't hit anything and jumps
-        return False, proPos
-
-def skeletonJumper(positions,offset,skeleton,jumpProb):
-    '''
-    
-    Checks whether or not a molecule can jump over a cytoskeletal element:
+    We now check if our molecules have crossed ANY of the lines
     Params:
-    positions, [float]: where the particles are pre jump
-    offset, [float]: the proposed offsets of the particles
-    skeleton, [float]: the location of the skeletal elements
-    jumpProb, float[0,1]: the probability a molecule can jump over a cytoskeletal element
-    Returns
-    acceptArray: [bool]: the list of whether or not a jump has been accepted
-    newPositions: The worst case positions it could end up in
-    
+        positions: The original positions of our moleulces
+        offset:    The proposed jump of our molecules
+        skeleton:  The lines stored
     '''
     acceptArray = np.ones(len(positions))
     newPositions = np.zeros(len(positions))
     #Check the x 
     proposed = positions+offset
-    counter = -1
-
-
-    for i,j in zip(positions,proposed):
-        counter += 1
-        
-        crossedBool,endPos = cytoskeletonCrosser(skeleton,i,j,jumpProb) #Did it cross a boundary
-        
-        newPositions[counter] = endPos 
     
+    #Now that we have the original and proposed positons
     
-
-
-    #I am going to assume that if the jump is rejected it'll 'bounce' off 
-
-    
-    return np.array(acceptArray),newPositions
 
 #Determines whether or not a walker has crossed a lipid domain
 def lipidDomainCrosser(location, radii,currentPosition,proposedPosition,probability):
