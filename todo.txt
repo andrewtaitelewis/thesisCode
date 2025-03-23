@@ -1,9 +1,22 @@
 - Set up intinitalizer 
 for confinements
     DONE Storage for line objects
-    - Reading a file(Csv?)
+    DONE Reading a file(Csv?)
     with the data
     -
 
+-Test confinement code- see if it
+does what we think it does 
+    DONE, Passed Can we initialize a bunchof skeleton lines
+    - Do we then properly read a jump or not
+        -Invalid value, because if they are parallel we are bonned 
+    
+    -Have to figure out how to check all of the lines
+
+    -FUCKKING ANNOYING
+    
+
+
 - Implement line crosser
 into simulation code 
+

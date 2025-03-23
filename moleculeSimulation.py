@@ -105,7 +105,7 @@ class molecule:
 
 
 
-        self.confinements = []
+        self.confinements = []      #The lines we create
 
 #Cytoskeleteon confinement
     def confinementInitializer(self, array):
@@ -463,6 +463,7 @@ def crossingChecker(skeleton,proposedJump):
         x1,y1,x2,y2 = skeleton.returnPoints(); x3,y3,x4,y4 = proposedJump.returnPoints()
         
         #So there is a chance that it'll be parallel
+        
         try:
             px = ((x1*y2 - y1*x2)*(x3-x4) - (x1-x2)*(x3*y4 - y3*x4))/((x1-x2)*(y3-y4) - (y1-y2)*(x3-x4))
             py = ((x1*y2 - y1*x2)*(y3-y4) - (y1-y2)*(x3*y4 - y3*x4))/((x1-x2)*(y3-y4) - (y1-y2)*(x3-x4))
@@ -477,7 +478,6 @@ def crossingChecker(skeleton,proposedJump):
         return False 
     return True
 
-vfunc = np.vectorize(crossingChecker)       #Vectorize our crossing Checker so we can pass the array
 
 def skeletonJumper(positions,offset,completeSkeleton):
     '''
@@ -492,12 +492,14 @@ def skeletonJumper(positions,offset,completeSkeleton):
 
     proposed = positions+offset                             #Where the molecules moy go
 
-    jumpLines = np.concatenate(positions,proposed)          #Creates a Nx4 array, x1,y1,x2,y2
+    jumpLines = [[i[0],i[1],j[0],j[1]] for i,j in zip(positions,proposed)]          #Creates a Nx4 array, x1,y1,x2,y2
 
     moleculeJumps = [makeLine(i) for i in jumpLines]        #Our molecules jumps
     #Now we see what we accepts
-    lambdavFunc = lambda x: vfunc(completeSkeleton,x)       #Our lambda function
-    acceptedArray = lambdavFunc(moleculeJumps)              #(Hopefully) returns an array of true false
+
+   
+    
+    acceptedArray = [lambdavFunc(x) for x in moleculeJumps]              #(Hopefully) returns an array of true false
     #Take accepted jumps, set new positions
 
     positions[acceptedArray == True ] = proposed            #Where we can go, we go
@@ -507,11 +509,24 @@ def skeletonJumper(positions,offset,completeSkeleton):
 if __name__ == '__main__' : 
     #New confinements
 
-    moleculeSimulation = molecule()
-    moleculeSimulation.confinementInitializer([[1,1,2,2,0]])
-    
-    print(moleculeSimulation.confinements)
+    #TEST- Initializing skeleton lines
+    simulationObject = molecule()       #Simulation object
 
+    skeletonLines = [
+        [0.2,0.2,1.1,1.1],
+        [1.2,1.3,-1.6,-1.5],
+        [4.1,4.4,-8.5,-8.6]
+        ]                              #Our test skeleton lines
+    simulationObject.confinementInitializer(skeletonLines)
+    print(simulationObject.confinements)
+    
+    positions = np.array([[-0.5,-0.0]])
+    proposedPositions = np.array([[12,10]])
+
+
+    print(skeletonJumper(positions,proposedPositions,simulationObject.confinements))
+
+    
 
 
         
