@@ -357,7 +357,6 @@ class molecule:
         '''
         Simulates our cells
         '''
-        
         #Reset our position history
         self.xPosHist = []
         self.yPosHist = []
@@ -445,7 +444,10 @@ class molecule:
 
 #===== Helper functions =====
 
-def crossingChecker(line1,line2):
+def crossingChecker(skeleton,proposedJump):
+    '''
+    Given the skeleton line and the proposedJump, check if it crosses
+    '''
     #Find the intersection points
 
     #Defining functions only used here
@@ -457,8 +459,8 @@ def crossingChecker(line1,line2):
         else:
             return False
 
-    def intersectionPoints(line1,line2):
-        x1,y1,x2,y2 = line1.returnPoints(); x3,y3,x4,y4 = line2.returnPoints()
+    def intersectionPoints(skeleton,proposedJump):
+        x1,y1,x2,y2 = skeleton.returnPoints(); x3,y3,x4,y4 = proposedJump.returnPoints()
         
         #So there is a chance that it'll be parallel
         try:
@@ -469,70 +471,34 @@ def crossingChecker(line1,line2):
             return (0,0)
         return px,py
 
-    px,py = intersectionPoints(line1,line2)
-    #See if they're both on the line
-    if onLine(line1,(px,py)) and onLine(line2,(px,py)):
+    px,py = intersectionPoints(skeleton,proposedJump)
+    #BOTH on line AND successful jump
+    if onLine(skeleton,(px,py)) and onLine(proposedJump,(px,py)) and (np.rand.random() < skeleton.p):
         return True 
-    else:
-        return False
+    return False
 
-def cytoskeletonCrosser(skeleton,curPos,proPos,jumpProb):
-    pass
-
-def skeletonJumper(positions,offset,skeleton):
+vfunc = np.vectorize(crossingChecker)       #Vectorize our crossing Checker so we can pass the array
+def skeletonJumper(positions,offset,completeSkeleton):
     '''
     We now check if our molecules have crossed ANY of the lines
     Params:
-        positions: The original positions of our moleulces
-        offset:    The proposed jump of our molecules
-        skeleton:  The lines stored
+        positions Nx2: x1,y1, N molecules: The original positions of our molecules 
+        offset Nx2:x2,y2    The proposed jump of our molecules
+        completeSkeleton:   All of the line objects
     '''
     acceptArray = np.ones(len(positions))
     newPositions = np.zeros(len(positions))
     #Check the x 
     proposed = positions+offset
+
+    jumpLines = np.concatenate(positions,acceptArray)       #Creates a Nx4 array, x1,y1,x2,y2
+
+    moleculeJumps = [makeLine(i) for i in jumpLines]        #Our molecules jumps
+    #Now we see what we accepts
     
-    #Now that we have the original and proposed positons
     
-
-#Determines whether or not a walker has crossed a lipid domain
-def lipidDomainCrosser(location, radii,currentPosition,proposedPosition,probability):
-    '''
-    Checks to see if a walker has crossed a lipid domain, one dimensional, so one would \n
-    check the x coordinate and the y coordinate seperately.
-    Params:
-    -------
-    - locations: list:floats: a list of the centers of the lipid microdomains
-    - radii: list:floats: a list of the radius' of the lipid microdomains
-    - currentPosition: (float,float): where the walker currently is
-    - proposedPosition: (float,float): where the walker wants to go
-    - probability: float, 0<1: probaiblity that the walker will cross the membrane
-    Returns:
-    - boolean: Whether or not the jump was successful 
-    '''
-    #Checks to see if a point is in a circle
-    def cirleChecker(position,location,radii):
-        '''Small checker to see if a point is in a circle'''
-        xCent,yCent = location 
-        xPos, yPos = position
-        if (xPos - xCent)**2 + (yPos - yCent)**2 <= radii**2:
-            return True 
-        else:
-            return False 
     
-    #If current and proposed positions are in the domain continue
-    curPosBool = cirleChecker(currentPosition, location, radii)
-    proPosBool = cirleChecker(proposedPosition, location, radii)
-    if  curPosBool and proPosBool or (not curPosBool) and (not proPosBool):
-        return True #i.e jump is accepted because of the check
-    elif np.random.uniform() < probability:
-        return True 
-    else: 
-        return False  
-     
-
-
-
+    
 #our testing code 
 if __name__ == '__main__' : 
     #New confinements
