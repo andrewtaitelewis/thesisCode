@@ -315,23 +315,27 @@ class molecule:
 
         #CYTOSKELETON CONFINEMENTS
         if self.skeleton == True:
-            #Go through particles- see if any jump over a line
-            #If they do jump over a line- see if they can (probability)
-            #if True- jump, if False- we'll need to reflect it
-            #Check the x 
-            xAccepted,xFinalPositions = skeletonJumper(self.xPositions,xOffset,self.xSkeleton,self.jumpProb)
-            yAccepted,yFinalPositions = skeletonJumper(self.yPositions,yOffset,self.ySkeleton,self.jumpProb)
-            xAccept= xAccept*xAccepted
-            yAccept = yAccept*yAccepted
+           
+
+            self.xPositions,        #List of N particles
+            self.yPositions         #List of N particles
+
+            positions = [[i,j] for i,j in zip(self.xPositions,self.yPositions)]
+            offset = [[i,j] for i,j in zip(xOffset,yOffset)]
+
+
+            newPositions = skeletonJumper(positions,offset,self.confinements)
+            newPositions = np.array(newPositions)
+
+            self.xPositions = newPositions[:,0]; self.yPositions = newPositions[:,1]
+        
 
 
 
 
         #CONFINEMENTS
         if self.skeleton == True:
-                
-                self.xPositions = xFinalPositions
-                self.yPositions = yFinalPositions
+              pass
 
         if self.skeleton == False:
             self.xPositions = self.xPositions+xOffset
@@ -343,14 +347,7 @@ class molecule:
             self.xPositions = self.xPositions%self.ROI
             self.yPositions = self.yPositions%self.ROI
             return
-        else:       #not periodic
-            print('wtf')
-            self.xPositions += (xOffset*xAccept)
-            self.yPositions += (yOffset*yAccept)
-            if self.skeleton == True:
-                
-                self.xPositions += int(xAccept == 0)*(xWorstCasePos-self.xPositions)
-                self.xPositions += int(yAccept == 0)*(yWorstCasePos-self.yPositions)
+        
         return 
     #Return a bunch of diffusion
     def simulate(self,timeSteps,timeStepSize):
@@ -496,7 +493,7 @@ def skeletonJumper(positions,offset,completeSkeleton):
         offset Nx2:x2,y2    The proposed jump of our molecules
         completeSkeleton:   All of the line objects
     Returns:
-        positions, updated with the new 
+        positions, updated with the new coordinates if they made the jump
     '''
 
     proposed = positions+offset                             #Where the molecules moy go
