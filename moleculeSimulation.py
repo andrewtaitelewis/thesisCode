@@ -454,7 +454,9 @@ def crossingChecker(skeleton,proposedJump):
     def onLine(line,point):
     #Determine if the point is on the parameterized line
         x,y = point 
-        if 0< (x-line.x1)/(line.x2 - line.x1) <1:
+        print(x,y)
+        if (0< (x-line.x1)/(line.x2 - line.x1) <1) or (0 <(y-line.y1)/(line.y2  - line.y1) <1) :
+
             return True 
         else:
             return False
@@ -464,20 +466,27 @@ def crossingChecker(skeleton,proposedJump):
         
         #So there is a chance that it'll be parallel
         
-        try:
-            px = ((x1*y2 - y1*x2)*(x3-x4) - (x1-x2)*(x3*y4 - y3*x4))/((x1-x2)*(y3-y4) - (y1-y2)*(x3-x4))
-            py = ((x1*y2 - y1*x2)*(y3-y4) - (y1-y2)*(x3*y4 - y3*x4))/((x1-x2)*(y3-y4) - (y1-y2)*(x3-x4))
-        except:
-            print('Lines are Parallel')
-            return (0,0)
+        
+        numeratorX =((x1*y2 - y1*x2)*(x3-x4) - (x1-x2)*(x3*y4 - y3*x4))
+        numeratorY = ((x1*y2 - y1*x2)*(y3-y4) - (y1-y2)*(x3*y4 - y3*x4))
+        denominator = ((x1-x2)*(y3-y4) - (y1-y2)*(x3-x4))
+        if denominator == 0:        #The are parallel or the same line
+            return(np.inf,np.inf)
+
+        px = numeratorX/denominator; py = numeratorY/denominator
+
+
         return px,py
 
     px,py = intersectionPoints(skeleton,proposedJump)
+    if px == np.inf or py == np.inf:
+        return True
     #Both on Line and we fail to jump
-    if onLine(skeleton,(px,py)) and onLine(proposedJump,(px,py)) and (np.rand.random() > skeleton.p):
+    if onLine(skeleton,(px,py)) and onLine(proposedJump,(px,py)) and not (np.random.rand() < skeleton.p):
         return False 
     return True
 
+      #Vectorize our crossing Checker so we can pass the array
 
 def skeletonJumper(positions,offset,completeSkeleton):
     '''
@@ -497,11 +506,18 @@ def skeletonJumper(positions,offset,completeSkeleton):
     moleculeJumps = [makeLine(i) for i in jumpLines]        #Our molecules jumps
     #Now we see what we accepts
 
-   
+    returnedList = []
+    crossingListChecker = lambda x: [crossingChecker(i,x) for i in completeSkeleton]
     
-    acceptedArray = [lambdavFunc(x) for x in moleculeJumps]              #(Hopefully) returns an array of true false
+    returnedList = list(map(crossingListChecker,moleculeJumps))
+    
+    print(returnedList  )            
     #Take accepted jumps, set new positions
+    
 
+    #Not quite, so what we have is now a list of line checks
+    acceptedArray = [not all( i) == False for i in returnedList]
+    print(acceptedArray)
     positions[acceptedArray == True ] = proposed            #Where we can go, we go
     return positions                                        #Returns the new jump
     
@@ -514,14 +530,15 @@ if __name__ == '__main__' :
 
     skeletonLines = [
         [0.2,0.2,1.1,1.1],
-        [1.2,1.3,-1.6,-1.5],
-        [4.1,4.4,-8.5,-8.6]
+        [0,-10,0,10],
+        [4.1,4.4,-8.5,-8.6],
+        [10,10,-10,-10,1]
         ]                              #Our test skeleton lines
     simulationObject.confinementInitializer(skeletonLines)
     print(simulationObject.confinements)
     
-    positions = np.array([[-0.5,-0.0]])
-    proposedPositions = np.array([[12,10]])
+    positions = np.array([[-1,0],[1,1],[5,5]])
+    proposedPositions = np.array([[1,0],[2,2],[3,3]])
 
 
     print(skeletonJumper(positions,proposedPositions,simulationObject.confinements))
