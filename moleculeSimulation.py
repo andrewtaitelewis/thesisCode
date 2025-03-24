@@ -325,6 +325,7 @@ class molecule:
 
 
             newPositions = skeletonJumper(positions,offset,self.confinements)
+           
             newPositions = np.array(newPositions)
 
             self.xPositions = newPositions[:,0]; self.yPositions = newPositions[:,1]
@@ -451,7 +452,7 @@ def crossingChecker(skeleton,proposedJump):
     def onLine(line,point):
     #Determine if the point is on the parameterized line
         x,y = point 
-        print(x,y)
+        
         if (0< (x-line.x1)/(line.x2 - line.x1) <1) or (0 <(y-line.y1)/(line.y2  - line.y1) <1) :
 
             return True 
@@ -495,28 +496,39 @@ def skeletonJumper(positions,offset,completeSkeleton):
     Returns:
         positions, updated with the new coordinates if they made the jump
     '''
+    
+    
+    proposed = np.array(positions).T + np.array(offset).T                            #Where the molecules moy go
+    proposed = proposed.T
 
-    proposed = positions+offset                             #Where the molecules moy go
-
+    
     jumpLines = [[i[0],i[1],j[0],j[1]] for i,j in zip(positions,proposed)]          #Creates a Nx4 array, x1,y1,x2,y2
 
     moleculeJumps = [makeLine(i) for i in jumpLines]        #Our molecules jumps
     #Now we see what we accepts
-
+    
     returnedList = []
-    crossingListChecker = lambda x: [crossingChecker(i,x) for i in completeSkeleton]
+
+    def crossingListChecker(moleculeJump): return [crossingChecker(i,moleculeJump) for i in completeSkeleton]
+    returnedList = [crossingListChecker(i) for i in moleculeJumps]
     
-    returnedList = list(map(crossingListChecker,moleculeJumps))
-    
-    print(returnedList  )            
+             
     #Take accepted jumps, set new positions
     
 
     #Not quite, so what we have is now a list of line checks
     acceptedArray = [not all( i) == False for i in returnedList]
-    print(acceptedArray)
-    positions[acceptedArray == True ] = proposed            #Where we can go, we go
-    return positions                                        #Returns the new jump
+    
+    #Oh it's weird... I keep setting it to be sillt
+    returnedArray = []
+    for i,j,z in zip(acceptedArray,positions,proposed):
+        if i == True:
+            returnedArray.append(z)
+            continue 
+        returnedArray.append(j)
+
+               #Where we can go, we go
+    return returnedArray                                        #Returns the new jump
     
 #our testing code 
 if __name__ == '__main__' : 
