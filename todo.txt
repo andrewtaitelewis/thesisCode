@@ -1,0 +1,21 @@
+
+26.03
+
+- Simulation Code
+    DONE Run Simulation
+
+
+- Analysis Code
+    - Make ROI Windows
+    - Analyze each window/ fit
+    - Export Relevant coefficients to file 
+    - Save file
+    - Load image Series and other important info
+
+-Gif Exporter
+    -Visualize coefficinets over image time seires
+
+
+
+
+
