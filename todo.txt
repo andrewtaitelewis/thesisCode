@@ -1,4 +1,5 @@
 
+<<<<<<< HEAD
 26.03
 
 - Simulation Code
@@ -18,4 +19,12 @@
 
 
 
+=======
+
+24.03:
+    -Put new skeletonJumper into main simulation code
+    - Ok it doesn't do what I assumed it would do... Gotta make it simpler for my brain to understand
+
+ 
+>>>>>>> 4fe22f65366034907b29624bc4ea3c4e7137fb13
 

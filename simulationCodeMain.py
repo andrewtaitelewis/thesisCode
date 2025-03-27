@@ -5,6 +5,7 @@ import time
 
 #====== Main Code =====
 
+<<<<<<< HEAD
 simulationObject = ms.molecule(1000,ROI=11.7185,imageResolution=150)
 
 #We need to set out confinements
@@ -47,3 +48,13 @@ Images = np.array(Images)[:,11:139,11:139]
 print(time.time()-time1)
 np.save('confinement',Images)
 
+=======
+simulationObject = ms.molecule(1500)
+simulationObject.confinementInitializer([[0,10,0,-10],[-10,0,10,0]])
+
+time1 = time.time()
+Images = simulationObject.simulate(100,0.02)
+
+print(time.time()-time1)
+np.save('test',Images)
+>>>>>>> 4fe22f65366034907b29624bc4ea3c4e7137fb13
