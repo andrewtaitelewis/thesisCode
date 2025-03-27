@@ -500,7 +500,7 @@ def skeletonJumper(positions,offset,completeSkeleton):
     
     proposed = np.array(positions).T + np.array(offset).T                            #Where the molecules moy go
     proposed = proposed.T
-<<<<<<< HEAD
+
    
     
     jumpLines = [[i[0],i[1],j[0],j[1]] for i,j in zip(positions,proposed)]          #Creates a Nx4 array, x1,y1,x2,y2
@@ -517,7 +517,7 @@ def skeletonJumper(positions,offset,completeSkeleton):
     #Take accepted jumps, set new positions
     
 
-=======
+#=======
 
     
     jumpLines = [[i[0],i[1],j[0],j[1]] for i,j in zip(positions,proposed)]          #Creates a Nx4 array, x1,y1,x2,y2
@@ -534,7 +534,7 @@ def skeletonJumper(positions,offset,completeSkeleton):
     #Take accepted jumps, set new positions
     
 
->>>>>>> 4fe22f65366034907b29624bc4ea3c4e7137fb13
+
     #Not quite, so what we have is now a list of line checks
     acceptedArray = [not all( i) == False for i in returnedList]
     
@@ -575,11 +575,4 @@ if __name__ == '__main__' :
 
 
         
-        
-
-    
-
-
-
-
 
