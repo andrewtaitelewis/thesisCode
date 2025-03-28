@@ -8,6 +8,7 @@ import pandas as pd
 import scipy
 import multiprocessing
 import pickle
+from numba import jit
 #Import File to Analyze 
 
 #We'll just load it from a csv
@@ -22,8 +23,10 @@ def analyze(x):
         imageSeries,timeSteps,whereItGoes = x
         '''What we will run on our multiprocessing'''
         correlation = WA.ticsFFT(imageSeries)[0]    #Correlate
-        fit,cov = scipy.optimize.curve_fit(fitModel,timeSteps,correlation/correlation[0], p0 = [0.02267889,0.05554198,0.09634419,0.38927243], bounds= ([0,0,0,0],[np.inf,np.inf,np.inf,np.inf]))    
-                                     #Fit
+        try:
+            fit,cov = scipy.optimize.curve_fit(fitModel,timeSteps,correlation/correlation[0], p0 = [0.02267889,0.05554198,0.09634419,0.38927243], bounds= ([0,0,0,0],[np.inf,np.inf,np.inf,np.inf]))    
+        except:
+            fit = [-1,-1,-1,-1]#Fit
         return [fit,whereItGoes]
 
 def appender(arrayToAppendTo,Data,window):
@@ -95,19 +98,22 @@ if __name__ == "__main__":
     #Make Work
     ts = np.arange(timeWindowSize)*0.02
     print(numberOfWindows)
-    for t in range(numberOfWindows):
+    from reprint import output
+    for t in range(200): 
         print('Starting: ',t)
         #make work1
         
         toAnalyze = wImage04[t:t+timeWindowSize,:,:]
         workPool = makeWork(toAnalyze,ts,64)
-        print('starting Pool')
+        
         with multiprocessing.Pool(processes= 7) as pool:
             print(len(workPool))
             result = pool.map(analyze,workPool)
+            pool.terminate()
         #Append to all the right arrays
-        print('Appending')
-   
+            
+        print('terminate it')
+
         for i in result:
             fit,whereItGoes = i
             appender(tds,fit[0],whereItGoes);appender(Dmacros,fit[1],whereItGoes);appender(Ls,fit[2],whereItGoes)
