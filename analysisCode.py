@@ -7,9 +7,13 @@ import numpy as np #A classic
 import pandas as pd
 import scipy
 import multiprocessing
-
+import os; import shutil
 import time
 import zarr
+
+#See if the data directory exists and if so delete it
+if(os.path.isdir('data')):
+    shutil.rmtree('data')
 #Import File to Analyze 
 
 #We'll just load it from a csv
@@ -110,7 +114,7 @@ if __name__ == "__main__":
         #make work1
         time1 = time.time()
         toAnalyze = wImage04[t:t+timeWindowSize,:,:]
-        workPool = makeWork(toAnalyze,ts,64)[:1000]
+        workPool = makeWork(toAnalyze,ts,64)
         
         print('Making Work took %s seconds' % str((time.time() - time1))[:6])
         time1 = time.time()
