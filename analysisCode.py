@@ -57,9 +57,17 @@ if __name__ == "__main__":
     timeSteps,M,M = np.shape(imageSeries)
     if M > 512:
         raise Exception("Image too large, the maximum size is 512x512")
+    if M > 512:
+        raise Exception("Image too large, the maximum size is 512x512")
     numberOfWindows = timeSteps-timeWindowSize + 1
     numberOfSpatialWindows = M-64+1
 
+    #Preallocated Numpy arrays for Dmicro, Ls, Dmacros
+    print('Allocating memory for coefficient arrays')
+    tds = np.full((64**2,M,M), np.nan )
+    Dmacro = np.full((64**2,M,M), np.nan )
+    Ls = np.full((64**2,M,M), np.nan )
+    print('Arrays allocated')
     #Preallocated Numpy arrays for Dmicro, Ls, Dmacros
     print('Allocating memory for coefficient arrays')
     tds = np.full((64**2,M,M), np.nan )
@@ -96,6 +104,7 @@ if __name__ == "__main__":
 
     #Tranform our images
     print('Transforming image...')
+    print('Transforming image...')
     wave04 = WA.KernelCreatorRicker2d(kernelAid,0.4)
     wImage04 = WT.waveletTransform2d(imageSeries,wave04)
     wImage04 = np.array(wImage04)
@@ -112,6 +121,7 @@ if __name__ == "__main__":
     for t in range(len(imageSeries)): 
         print('Starting run:',t)
         #make work1
+        time1 = time.time()
         time1 = time.time()
         toAnalyze = wImage04[t:t+timeWindowSize,:,:]
         workPool = makeWork(toAnalyze,ts,64)
