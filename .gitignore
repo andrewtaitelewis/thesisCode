@@ -3,3 +3,5 @@
 *.npy
 *.gif
 *.pickle
+data/
+/data

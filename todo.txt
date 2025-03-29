@@ -1,30 +1,28 @@
 
-<<<<<<< HEAD
-26.03
 
-- Simulation Code
-    DONE Run Simulation
+29-03-25: Captain's Log
+    15:57:
+    Our zarr workaround well.. works! now we need a way to make the appender work quickly... it takes too long to figure out where everything goes.
+    13:06:
+    Upon seeing the awful mess my pickling did (4 gb files) and giving my Ram a workout it is obvious that we need to take a new tact, preallocate the array and append to an output file that we can load slices of for analysis and visualization. Good luck! 
+-TODO
+
+- Analysis Code:
+    - Figure out how to preallocate the arrays with NaNs:
+        - DONE! Write code to save in the right spot 
+
+        
+    - DONE! Write to output and input file dynamically
+        !Looks like zarr is a better way to do it
+    - Run?! 
+
+    - appender needs work, there must be a more efficient way to 
+    save to our allocated arrays
+
+- Fitting
+    - Maybe try the ^-1 **(1/3) and see what happens with first 1/6th of the correlation
+    - Fit better fit faster sleep better sleep faster?
 
 
-- Analysis Code
-    - Make ROI Windows
-    - Analyze each window/ fit
-    - Export Relevant coefficients to file 
-    - Save file
-    - Load image Series and other important info
-
--Gif Exporter
-    -Visualize coefficinets over image time seires
-
-
-
-
-=======
-
-24.03:
-    -Put new skeletonJumper into main simulation code
-    - Ok it doesn't do what I assumed it would do... Gotta make it simpler for my brain to understand
-
- 
->>>>>>> 4fe22f65366034907b29624bc4ea3c4e7137fb13
-
+- GIF 
+    - Make maps of the images 

@@ -7,8 +7,9 @@ import numpy as np #A classic
 import pandas as pd
 import scipy
 import multiprocessing
-import pickle
-from numba import jit
+
+import time
+import zarr
 #Import File to Analyze 
 
 #We'll just load it from a csv
@@ -29,12 +30,7 @@ def analyze(x):
             fit = [-1,-1,-1,-1]#Fit
         return [fit,whereItGoes]
 
-def appender(arrayToAppendTo,Data,window):
-    xMin,xMax,yMin,yMax = window
-    for i in range(xMin,xMax):
-        for j in range(yMin,yMax):
-            arrayToAppendTo[i][j].append(Data)
-    return
+
 
 if __name__ == "__main__":
     #Settings
@@ -55,13 +51,17 @@ if __name__ == "__main__":
     #
     #Image will have form (N,MxM)
     timeSteps,M,M = np.shape(imageSeries)
+    if M > 512:
+        raise Exception("Image too large, the maximum size is 512x512")
     numberOfWindows = timeSteps-timeWindowSize + 1
     numberOfSpatialWindows = M-64+1
 
-    #Initialize an empty list of empty lists of empty lists
-    # Dmicro, Ls, Dmacros
-    #
-    tds = [[[[] for _ in range(M)] for _ in range(M)]for _ in range(numberOfWindows)]; Dmacros = [[[[] for _ in range(M)] for _ in range(M)]for _ in range(numberOfWindows)];Ls = [[[[] for _ in range(M)] for _ in range(M)]for _ in range(numberOfWindows)]
+    #Preallocated Numpy arrays for Dmicro, Ls, Dmacros
+    print('Allocating memory for coefficient arrays')
+    tds = np.full((64**2,M,M), np.nan )
+    Dmacro = np.full((64**2,M,M), np.nan )
+    Ls = np.full((64**2,M,M), np.nan )
+    print('Arrays allocated')
 
 
     #1 Wavelet Scales to Analyze on 0.2um, 0.4um , 0.6um
@@ -91,38 +91,68 @@ if __name__ == "__main__":
     kernelAid = mc.molecule(ROI=ROI,imageResolution=M)
 
     #Tranform our images
+    print('Transforming image...')
     wave04 = WA.KernelCreatorRicker2d(kernelAid,0.4)
     wImage04 = WT.waveletTransform2d(imageSeries,wave04)
     wImage04 = np.array(wImage04)
 
     #Make Work
-    ts = np.arange(timeWindowSize)*0.02
-    print(numberOfWindows)
-    from reprint import output
-    for t in range(20): 
-        print('Starting: ',t)
+    ts = np.arange(timeWindowSize)*timeStepSize
+    
+    print('Starting analysis...')
+
+    #Initializing zarr file
+    tdsZarr = zarr.create_array(store="data/tds.zarr",shape=(1000, 64**2,M,M),chunks=(1,64**2,M, M),dtype="f8")
+    dMacrosZarr = zarr.create_array(store="data/dMacros.zarr",shape=(1000, 64**2,M,M),chunks=(1,64**2,M, M),dtype="f8")
+    LsZarr = dMacrosZarr = zarr.create_array(store="data/Ls.zarr",shape=(1000, 64**2,M,M),chunks=(1,64**2,M, M),dtype="f8")
+    for t in range(len(imageSeries)): 
+        print('Starting run:',t)
         #make work1
-        
+        time1 = time.time()
         toAnalyze = wImage04[t:t+timeWindowSize,:,:]
-        workPool = makeWork(toAnalyze,ts,64)
+        workPool = makeWork(toAnalyze,ts,64)[:1000]
+        
+        print('Making Work took %s seconds' % str((time.time() - time1))[:6])
+        time1 = time.time()
+        #
         
         with multiprocessing.Pool(processes= 7) as pool:
             print(len(workPool))
             result = pool.map(analyze,workPool)
             pool.terminate()
+
+            print('Multiprocessing took %s seconds' % str((time.time() - time1))[:6])
         #Append to all the right arrays
             
-        print('terminate it')
+       
 
+        print('appending results')
+        time1 = time.time()
+
+
+        indexer = np.zeros((M,M),dtype='int')
         for i in result:
+            
             fit,whereItGoes = i
-            appender(tds,fit[0],whereItGoes);appender(Dmacros,fit[1],whereItGoes);appender(Ls,fit[2],whereItGoes)
+            xMin,xMax,yMin,yMax = whereItGoes
+
+            for xs in range(xMin,xMax):
+                for ys in range(yMin,yMax):
+                    
+
+                    tds[indexer[xs,ys],xs,ys] = fit[0]
+                    Dmacro[indexer[xs,ys],xs,ys] = fit[1]
+                    Ls[indexer[xs,ys],xs,ys] = fit[2]
+                    indexer[xs,ys] += 1
+
+
+           
+        print(np.max(indexer)) 
+        print('Appending took %s seconds' % str((time.time() - time1))[:6])
     
-    #Save with pickle
-    
-    with open('tds.pickle', 'wb') as handle:
-        pickle.dump(tds, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    with open('Ds.pickle', 'wb') as handle:
-        pickle.dump(Dmacros, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    with open('Ls.pickle', 'wb') as handle:
-        pickle.dump(Ls, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        #Write to file
+        time1 = time.time()
+        tdsZarr[t] = tds
+        dMacrosZarr[t] = Dmacro
+        LsZarr[t] = Ls
+        print('Writing to file took %s seconds' % str((time.time() - time1))[:6])
