@@ -99,7 +99,7 @@ if __name__ == "__main__":
     ts = np.arange(timeWindowSize)*0.02
     print(numberOfWindows)
     from reprint import output
-    for t in range(200): 
+    for t in range(20): 
         print('Starting: ',t)
         #make work1
         

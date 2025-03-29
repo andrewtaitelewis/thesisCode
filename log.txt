@@ -1,0 +1,65 @@
+FileName    confinement.npy
+TimeStep               0.02
+Roi                      10
+Name: 0, dtype: object
+901
+Starting:  0
+4225
+terminate it
+Starting:  1
+4225
+terminate it
+Starting:  2
+4225
+terminate it
+Starting:  3
+4225
+terminate it
+Starting:  4
+4225
+terminate it
+Starting:  5
+4225
+terminate it
+Starting:  6
+4225
+terminate it
+Starting:  7
+4225
+terminate it
+Starting:  8
+4225
+terminate it
+Starting:  9
+4225
+terminate it
+Starting:  10
+4225
+terminate it
+Starting:  11
+4225
+terminate it
+Starting:  12
+4225
+terminate it
+Starting:  13
+4225
+terminate it
+Starting:  14
+4225
+terminate it
+Starting:  15
+4225
+terminate it
+Starting:  16
+4225
+terminate it
+Starting:  17
+4225
+terminate it
+Starting:  18
+4225
+terminate it
+Starting:  19
+4225
+terminate it
