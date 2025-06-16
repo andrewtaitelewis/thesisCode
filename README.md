@@ -1,2 +1,3 @@
-To install all the dependencies, run: \n
+To install all the dependencies, run: 
+
   pip install -r requirements.txt
